@@ -33,9 +33,11 @@ async def normal_handler(event):
     # print(event.message.to_dict()['message'])
     user_mess = event.message.to_dict()["message"]
     result = []
-    for key, values in REGEX_DICT.items():
+    for values in REGEX_DICT.values():
         result.append(re.search(values, user_mess)[0])
-    print(float(result[0]))
+    if all(result):
+        print(result)
+    
     # if result:
     #     print(result[0])
     
