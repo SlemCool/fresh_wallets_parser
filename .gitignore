@@ -1,0 +1,13 @@
+__pycache__
+/.venv
+.env
+*.log
+*.log.*
+event_data.txt
+data
+logs
+downloaded_files
+main.dist
+main.build
+*.session
+*.session-journal
