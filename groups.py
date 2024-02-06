@@ -56,8 +56,15 @@ async def normal_handler(event):
     if all(message):
         print(message)
         timestamp = int(time.time())
-        data.setdefault(message[1], default)
-
+        meta_data = {
+            "timestamp": timestamp,
+            "count_sol": message[0],
+            "lp_flag": message[2],
+            "mint_flag": message[3],
+            "freeze_flag": message[4],
+        }
+        data.setdefault(message[1], meta_data)
+    print(data)
     # if result:
     #     print(result[0])
 
