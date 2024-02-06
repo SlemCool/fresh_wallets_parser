@@ -1,18 +1,26 @@
+import configparser
 import os
 import re
+import time
 
 from dotenv import load_dotenv
 from telethon import TelegramClient, events, sync
 
 load_dotenv()
+config = configparser.ConfigParser()
+config.read("settings.ini")
 
+TIME_DELTA = int(config.get("DEFAULT", "time_delta"))
+QUANTITY_SOL = int(config.get("DEFAULT", "quantity_sol"))
+LP_FLAG = config.get("DEFAULT", "lp")
+MINT_FLAG = config.get("DEFAULT", "mint")
+FREEZE_FLAG = config.get("DEFAULT", "freeze")
 
 API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
 
-phone = "Kagadi_a"
+TARGET_USER = "JLeagua_bot"
 TARGET_GROUP = "FreshWallets_Tracker_SOL"
-client = TelegramClient(phone, API_ID, API_HASH, system_version="4.16.30-vxCUSTOM")
 
 REGEX_DICT = {
     "quantity_sol": r"(?<=swapped )(?P<sol>.*)(?= SOL)",
@@ -22,26 +30,38 @@ REGEX_DICT = {
     "freeze_flag": r"(?<=Freeze: .)(?P<frz_flag>\w*)(?=.\n)",
 }
 
-# client.start()
+data = {}
+client = TelegramClient("Kagadi_a", API_ID, API_HASH, system_version="4.16.30-vxCUSTOM")
 
+print(int(time.time()))
+current_time = time.time()
+formatted_time = time.ctime(current_time)
+print(formatted_time)
+
+# client.start()
 # for dialog in client.iter_dialogs():
 #     print(dialog.title)
 
 
+async def parse_message(message):
+    message_data = []
+    for values in REGEX_DICT.values():
+        message_data.append(re.search(values, message)[0])
+    return message_data
+
+
 @client.on(events.NewMessage(chats=TARGET_GROUP))
 async def normal_handler(event):
-    # print(event.message.to_dict()['message'])
-    user_mess = event.message.to_dict()["message"]
-    result = []
-    for values in REGEX_DICT.values():
-        result.append(re.search(values, user_mess)[0])
-    if all(result):
-        print(result)
-    
+    message = await parse_message(event.message.to_dict()["message"])
+    if all(message):
+        print(message)
+        timestamp = int(time.time())
+        data.setdefault(message[1], default)
+
     # if result:
     #     print(result[0])
-    
-    # await client.send_message('don_pahom', user_mess)
+
+    await client.send_message(TARGET_USER, " ".join(message))
 
     # s_user_id = event.message.to_dict()["from_id"]
     # user_id = int(s_user_id)
