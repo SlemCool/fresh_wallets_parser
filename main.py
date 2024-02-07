@@ -1,89 +1,109 @@
-import csv
+import configparser
 import os
+import re
+import time
 
 from dotenv import load_dotenv
-from telethon.sync import TelegramClient
-from telethon.tl.functions.messages import GetDialogsRequest
-from telethon.tl.types import InputPeerEmpty
-
-from config import app_logger
+from telethon import TelegramClient, events, sync
 
 load_dotenv()
+config = configparser.ConfigParser()
+config.read("settings.ini")
+
+TIME_DELTA = int(config.get("DEFAULT", "time_delta"))
+QUANTITY_SOL = float(config.get("DEFAULT", "quantity_sol"))
+QUANTITY_DEALS = int(config.get("DEFAULT", "quantity_deals"))
+LP_FLAG = config.get("DEFAULT", "lp").lower()
+MINT_FLAG = config.get("DEFAULT", "mint").lower()
+FREEZE_FLAG = config.get("DEFAULT", "freeze").lower()
+
+# API_ID = os.getenv("API_ID")
+# API_HASH = os.getenv("API_HASH")
+# TARGET_USER = "JLeagua_bot"
+# TARGET_GROUP = "FreshWallets_Tracker_SOL"
+
+API_ID = config.get("USER", "api_id")
+API_HASH = config.get("USER", "api_hash")
+TARGET_USER = config.get("DIRECTION", "target_user")
+TARGET_GROUP = config.get("FROM", "target_chat")
+
+REGEX_DICT = {
+    "quantity_sol": r"(?<=swapped )(?P<sol>.*?)(?= SOL)",
+    "token_address": r"(?<=Token Address: )(?P<tok_adr>.*)(?=\n)",
+    "lp_flag": r"(?<=LP: .)(?P<lp_flag>\w*)(?=.\n)",
+    "mint_flag": r"(?<=Mint: .)(?P<mint_flag>\w*)(?=.\n)",
+    "freeze_flag": r"(?<=Freeze: .)(?P<frz_flag>\w*)(?=.\n)",
+}
+
+data = {}
+client = TelegramClient("Kagadi_a", API_ID, API_HASH, system_version="4.16.30-vxCUSTOM")
 
 
-API_ID = os.getenv("API_ID")
-API_HASH = os.getenv("API_HASH")
+async def parse_message(message):
+    message_data = []
+    for values in REGEX_DICT.values():
+        element = re.search(values, message)
+        if element:
+            message_data.append(element[0])
+        else:
+            message_data.append(element)
+    return message_data
 
-phone = "Kagadi_a"
-TARGET_GROUP = "Fresh Wallets Tracker SOLANA"
+
+async def check_data(data):
+    check_series = {
+        "time": int(time.time()) - data["timestamp"] <= TIME_DELTA,
+        "sol": QUANTITY_SOL <= data["count_sol"],
+        "lp": LP_FLAG == data["lp_flag"],
+        "mint": MINT_FLAG == data["mint_flag"],
+        "freeze": FREEZE_FLAG == data["freeze_flag"],
+        "deals": QUANTITY_DEALS <= data["count_deals"],
+    }
+    return all(check_series.values())
+
+
+async def update_data(new_data):
+    token = new_data[1]
+    data[token]["count_sol"] = data[token]["count_sol"] + float(new_data[0])
+    data[token]["count_deals"] += 1
+
+
+async def clean_data():
+    if data:
+        for key in list(data):
+            if int(time.time()) - data[key]["timestamp"] >= TIME_DELTA:
+                del data[key]
+
+
+@client.on(events.NewMessage(chats=TARGET_GROUP))
+async def normal_handler(event):
+    await clean_data()
+    message = await parse_message(event.message.to_dict()["message"])
+    if all(message):
+        token = message[1]
+
+        if token not in data:
+            meta_data = {
+                "timestamp": int(time.time()),
+                "count_sol": float(message[0]),
+                "lp_flag": message[2].lower(),
+                "mint_flag": message[3].lower(),
+                "freeze_flag": message[4].lower(),
+                "count_deals": 1,
+            }
+            data[token] = meta_data
+        else:
+            await update_data(message)
+
+        if await check_data(data[token]):
+            await client.send_message(TARGET_USER, ", ".join(message))
+    else:
+        print(message)
+    for key in data.keys():
+        print(f"{key} - {data[key]}")
+    print("\n--------------------------------\n")
+
 
 if __name__ == "__main__":
-    client = TelegramClient(phone, API_ID, API_HASH, system_version="4.16.30-vxCUSTOM")
     client.start()
-
-    chats = []
-    last_date = None
-    size_chats = 200
-    groups = []
-
-    result = client(
-        GetDialogsRequest(
-            offset_date=last_date,
-            offset_id=0,
-            offset_peer=InputPeerEmpty(),
-            limit=size_chats,
-            hash=0,
-        )
-    )
-    chats.extend(result.chats)
-
-    for chat in chats:
-        try:
-            if chat.megagroup == True:
-                groups.append(chat)
-        except:
-            continue
-
-    print("Выберите номер группы из перечня:")
-    i = 1
-    for g in groups:
-        print(str(i) + " - " + g.title)
-        i += 1
-
-    g_index = input("Введите нужную цифру: ")
-    target_group = groups[int(g_index) - 1]
-
-    print("Узнаём пользователей...")
-    all_participants = []
-    all_participants = client.get_participants(target_group)
-
-    print("Сохраняем данные в файл...")
-    with open("members.csv", "w", encoding="UTF-8") as f:
-        writer = csv.writer(f, delimiter=",", lineterminator="\n")
-        writer.writerow(["username", "name", "group"])
-        for user in all_participants:
-            if user.username:
-                username = user.username
-            else:
-                username = ""
-            if user.first_name:
-                first_name = user.first_name
-            else:
-                first_name = ""
-            if user.last_name:
-                last_name = user.last_name
-            else:
-                last_name = ""
-            if user.phone:
-                user_phone = user.phone
-            else:
-                user_phone = ""
-            name = (first_name + " " + last_name).strip()
-            writer.writerow([username, name, user_phone, target_group.title])
-    print("Парсинг участников группы успешно выполнен.")
-
-    # dialogs = client.get_dialogs()
-    # for dialog in dialogs:
-    #     if dialog.name == TARGET_GROUP:
-    #         for message in dialog.messages:
-    #             print(message)
+    client.run_until_disconnected()
