@@ -11,3 +11,4 @@ main.dist
 main.build
 *.session
 *.session-journal
+settings.ini
