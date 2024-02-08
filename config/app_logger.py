@@ -12,7 +12,7 @@ if not os.path.isdir("logs"):
 
 def get_file_handler():
     file_handler = RotatingFileHandler(
-        "logs/Jleague.log",
+        "logs/FWParser.log",
         encoding="utf-8",
         maxBytes=3 * 1024 * 1024,
         backupCount=5,
