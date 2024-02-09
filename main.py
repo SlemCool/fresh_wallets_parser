@@ -1,4 +1,5 @@
 import configparser
+import os
 import re
 import time
 
@@ -60,7 +61,10 @@ client = TelegramClient(USER_NAME, API_ID, API_HASH, system_version="4.16.30-vxC
 
 async def parse_message(message):
     message_data = []
-    logger.info(f"Разбираем сообщение на элементы: {message[:10]}...")
+    new_line = "\n"
+    logger.info(
+        f"Разбираем сообщение на элементы: {message[:20].replace(new_line, ' ')}..."
+    )
     for values in REGEX_DICT.values():
         element = re.search(values, message)
         if element:
@@ -74,7 +78,7 @@ async def parse_message(message):
 async def check_data(data):
     logger.info(f"Проверяем данные токена на соответствие заданным параметрам: {data}")
     check_series = {
-        "time": int(time.time()) - data["timestamp"] <= TIME_DELTA,
+        "time": int(time.time()) - data["time_stamp"] <= TIME_DELTA,
         "sol": QUANTITY_SOL <= data["count_sol"],
         "lp": LP_FLAG == data["lp_flag"],
         "mint": MINT_FLAG == data["mint_flag"],
@@ -94,14 +98,14 @@ async def update_data(new_data):
         f"Меняем счетчик сделок с {count_deals} на: {count_deals + 1}"
     )
     data[token]["count_sol"] = data[token]["count_sol"] + float(new_data[0])
-    count_deals += 1
+    data[token]["count_deals"] += 1
 
 
 async def clean_data():
     logger.info("Проверяем словарь с данными на наличие вышедших из временной дельты")
     if data:
         for key in list(data):
-            if int(time.time()) - data[key]["timestamp"] >= TIME_DELTA:
+            if int(time.time()) - data[key]["time_stamp"] >= TIME_DELTA:
                 logger.info(f"Удаляем из отслеживаемых токен: {data[key]}")
                 del data[key]
 
@@ -119,7 +123,7 @@ async def normal_handler(event):
         if token not in data:
             logger.info(f"Токен {token} не обнаружен создаем для него запись")
             meta_data = {
-                "timestamp": int(time.time()),
+                "time_stamp": int(time.time()),
                 "count_sol": float(message[0]),
                 "lp_flag": message[2].lower(),
                 "mint_flag": message[3].lower(),
@@ -135,6 +139,11 @@ async def normal_handler(event):
                 f"Нужное событие! Отправляем сообщение пользователю: {TARGET_USER}"
             )
             await client.send_message(TARGET_USER, ", ".join(message))
+        logger.info(
+            f"\n{'-' * 5 + 'ТЕКУЩИЕ ДАННЫЕ' + '-' * 5}\n"
+            f"{os.linesep.join(f'{key}: {value}' for key, value in data.items())}"
+            f"\n{'-' * 24}\n"
+        )
     else:
         logger.error(f"Не удалось обработать сообщение {message}")
 
