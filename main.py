@@ -55,6 +55,7 @@ REGEX_DICT = {
 }
 
 data = {}
+completed_tokens = {}
 logger.info(f"Открываем сессию в телеграме для: {USER_NAME}")
 client = TelegramClient(USER_NAME, API_ID, API_HASH, system_version="4.16.30-vxCUSTOM")
 
@@ -80,10 +81,11 @@ async def check_data(data):
     check_series = {
         "time": int(time.time()) - data["time_stamp"] <= TIME_DELTA,
         "sol": QUANTITY_SOL <= data["count_sol"],
-        "lp": LP_FLAG == data["lp_flag"],
-        "mint": MINT_FLAG == data["mint_flag"],
-        "freeze": FREEZE_FLAG == data["freeze_flag"],
         "deals": QUANTITY_DEALS <= data["count_deals"],
+        # Проверки на флаги раскомментировать если нужно
+        # "lp": LP_FLAG == data["lp_flag"],
+        # "mint": MINT_FLAG == data["mint_flag"],
+        # "freeze": FREEZE_FLAG == data["freeze_flag"],
     }
     logger.info(f"Результаты проверки: {check_series}")
     return all(check_series.values())
@@ -102,12 +104,22 @@ async def update_data(new_data):
 
 
 async def clean_data():
-    logger.info("Проверяем словарь с данными на наличие вышедших из временной дельты")
+    logger.info("Проверяем данные на наличие вышедших токенов из временной дельты")
     if data:
-        for key in list(data):
-            if int(time.time()) - data[key]["time_stamp"] >= TIME_DELTA:
-                logger.info(f"Удаляем из отслеживаемых токен: {data[key]}")
-                del data[key]
+        for token in list(data):
+            if int(time.time()) - data[token]["time_stamp"] >= TIME_DELTA:
+                logger.info(f"Удаляем из отслеживаемых токен: {data[token]}")
+                del data[token]
+    ten_hours = 3600 * 10
+    logger.info(
+        "Проверяем отработанные токены на наличие "
+        f"вышедших таймаутов({ten_hours} сек.) в стоп-листе"
+    )
+    if completed_tokens:
+        for token in list(completed_tokens):
+            if int(time.time()) - completed_tokens[token]["time_stamp"] >= ten_hours:
+                logger.info(f"Удаляем из отслеживаемых токен: {data[token]}")
+                del data[token]
 
 
 @client.on(events.NewMessage(chats=TARGET_CHAT))
@@ -134,11 +146,19 @@ async def normal_handler(event):
         else:
             await update_data(message)
 
-        if await check_data(data[token]):
+        if await check_data(data[token]) and token not in completed_tokens:
             logger.info(
                 f"Нужное событие! Отправляем сообщение пользователю: {TARGET_USER}"
             )
-            await client.send_message(TARGET_USER, ", ".join(message))
+            message_to_send = (
+                f"Внимание!!!\n\nПо токену:\n{token}\n"
+                f"Сработала детекция на количество сделок: {QUANTITY_DEALS} "
+                f"и количество потраченных SOL: {QUANTITY_SOL}"
+            )
+
+            await client.send_message(TARGET_USER, message_to_send)
+            logger.info(f"Помещаем токен {token} в стоп лист на 10 часов")
+            completed_tokens[token] = {"time_stamp": int(time.time())}
         logger.info(
             f"\n{'-' * 5 + 'ТЕКУЩИЕ ДАННЫЕ' + '-' * 5}\n"
             f"{os.linesep.join(f'{key}: {value}' for key, value in data.items())}"
