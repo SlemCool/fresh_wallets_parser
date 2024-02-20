@@ -66,12 +66,12 @@ pycparser = "*"
 
 [[package]]
 name = "nuitka"
-version = "2.0.2"
+version = "2.0.3"
 description = "Python compiler with full language support and CPython compatibility"
 optional = false
 python-versions = "*"
 files = [
-    {file = "Nuitka-2.0.2.tar.gz", hash = "sha256:d4d033a088fff01ce7e3cf75f0a36b5aecb8fb9f005ae37dd3c0d09aae677095"},
+    {file = "Nuitka-2.0.3.tar.gz", hash = "sha256:9e9cd4b2e1e802be6233d48f5c8406c9289d5816bfd82d09fc6b95c1449ff900"},
 ]
 
 [package.dependencies]
@@ -140,12 +140,12 @@ pyasn1 = ">=0.1.3"
 
 [[package]]
 name = "telethon"
-version = "1.33.1"
+version = "1.34.0"
 description = "Full-featured Telegram client library for Python 3"
 optional = false
 python-versions = ">=3.5"
 files = [
-    {file = "Telethon-1.33.1.tar.gz", hash = "sha256:377107d77fd95f8c2bd7fce77f9d78da84c1ff58023f59e8d06035a4548bd36b"},
+    {file = "Telethon-1.34.0.tar.gz", hash = "sha256:55290809a30081fa0bb5052abb7547cbb25d7fbca94f32f13c147504d521804f"},
 ]
 
 [package.dependencies]
