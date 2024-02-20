@@ -171,3 +171,6 @@ async def normal_handler(event):
 if __name__ == "__main__":
     client.start()
     client.run_until_disconnected()
+
+
+# python -m nuitka --follow-imports --standalone --include-data-files=settings.ini=settings.ini --remove-output --windows-icon-from-ico=logo.png  -o FWparser main.py
