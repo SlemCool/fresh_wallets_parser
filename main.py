@@ -11,7 +11,7 @@ logger = app_logger.get_logger(__name__)
 
 logger.info("Загружаем настройки...")
 config = configparser.ConfigParser()
-config.read("settings.ini", encoding="utf-8")
+config.read("data/settings.ini", encoding="utf-8")
 
 TIME_DELTA = int(config.get("DEFAULT", "time_delta"))
 QUANTITY_SOL = float(config.get("DEFAULT", "quantity_sol"))
@@ -173,4 +173,4 @@ if __name__ == "__main__":
     client.run_until_disconnected()
 
 
-# python -m nuitka --follow-imports --standalone --include-data-files=settings.ini=settings.ini --remove-output --windows-icon-from-ico=logo.png  -o FWparser main.py
+# python -m nuitka --follow-imports --standalone --include-data-dir=data=data --remove-output --windows-icon-from-ico=logo.png  -o FWparser main.py
